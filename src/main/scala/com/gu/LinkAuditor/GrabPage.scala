@@ -3,26 +3,33 @@ package com.gu.LinkAuditor
 import org.jsoup.Jsoup
 import org.jsoup.nodes._
 import collection.JavaConversions
+import java.net.URL
 
 object GrabPage extends App {
-  val doc = Jsoup.connect("http://www.guardian.co.uk").get()
 
-  // I want to answer 3 simple questions:
-  // 1. how many links are there on the pages that I spider from the network front (2 deep)
-  // 2. how many times is www.guardian.co.uk/* referenced?
-  // 3. how many links are not pointing to www.guardian.co.uk/* ?
+  def getUrlAndRecurse(url: String, recursionDepth: Int) {
+    if (recursionDepth >= 0) {
+      val target = new URL(url)
+      val targetHost = target.getHost
 
-  // and I need this information recorded someplace so that I can compare it over time.
+      try {
+        val doc = Jsoup.connect(target.toString).get
 
-  val links: Iterator[Element] = JavaConversions.asScalaIterator(doc.select("a[href]").listIterator())
-  val linkList = links.toList
-  val internalLinks = linkList.filter(_.attr("href").startsWith("http://www.guardian.co.uk/"))
-  val fragmentUrls = linkList.filter(_.attr("href").startsWith("#"))
-  val externalLinks = linkList -- internalLinks -- fragmentUrls
+        val links: Iterator[Element] = JavaConversions.asScalaIterator(doc.select("a[href]").listIterator())
+        val linkList = links.toList.map(_.attr("href")).filterNot(_.startsWith("#")) // don't want fragment urls.
+        val internalLinks = linkList.filter(_.startsWith("http://%s/".format(targetHost)))
+        val relativeLinks = linkList.filter(_.startsWith("/"))
 
-  println("Total number of links on www.guardian.co.uk: " + linkList.length)
-  println("Total number of links to same domain: " + internalLinks.length)
-  println("Total number of links to same page: " + fragmentUrls.length)
-  println ("Total number of links to external domain: " + externalLinks.length)
+        println("%s; %s; %s".format(url, internalLinks.length, relativeLinks.length))
+        internalLinks foreach {
+          getUrlAndRecurse(_, recursionDepth - 1)
+        }
+      } catch {
+        case ex: java.net.SocketTimeoutException => println("Timed out getting %s".format(url))
+      }
+    }
+    }
 
-}
+    println("Url; Absolute internal link count; Relative link count")
+    getUrlAndRecurse("http://www.guardian.co.uk", 2)
+  }
