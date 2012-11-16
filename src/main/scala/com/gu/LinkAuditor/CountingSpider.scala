@@ -6,7 +6,7 @@ import collection.JavaConversions
 import java.net.URL
 import collection.mutable.HashSet
 
-object GrabPage extends App {
+object CountingSpider extends App {
 
   val r1History = new HashSet[String]
   val visitedLinks = new HashSet[String]
