@@ -4,6 +4,7 @@ target/*
 project/target/*
 *.class
 *.log
+links-*/
 
 # sbt specific
 dist/*
