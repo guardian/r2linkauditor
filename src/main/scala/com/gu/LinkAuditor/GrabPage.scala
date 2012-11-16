@@ -23,7 +23,7 @@ object GrabPage extends App {
         val internalLinks = linkList.filter(_.startsWith("http://%s/".format(targetHost)))
         val relativeLinks = linkList.filter(_.startsWith("/"))
 
-        println("%s; %s; %s".format(url, internalLinks.length, relativeLinks.length))
+        println("%s| %s| %s".format(url, internalLinks.length, relativeLinks.length))
         internalLinks foreach { getUrlAndRecurse(_, recursionDepth - 1, history + url, url)}
       } catch {
         case ex: java.net.SocketTimeoutException => println("Timed out getting %s".format(url))
