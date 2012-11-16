@@ -2,7 +2,7 @@ package com.gu.LinkAuditor
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes._
-import collection.JavaConversions
+import collection.JavaConversions._
 import java.net.URL
 import collection.mutable.HashSet
 
@@ -19,15 +19,14 @@ object CountingSpider extends App {
       try {
         val doc = Jsoup.connect(target.toString).userAgent("Guardian dotCom linkAuditor").get
 
-        val linkElements = doc.select("a[href]")
-        val elementList: Iterator[Element] = JavaConversions.asScalaIterator(linkElements.listIterator())
+        val elementList = doc.select("a[href]").toList
 
-        val linkList = elementList.toList.map(_.attr("href")).filterNot(_.startsWith("#")) // don't want fragment urls.
+        val linkList = elementList.map(_.attr("href")).filterNot(_.startsWith("#")) // don't want fragment urls.
         val internalLinks = linkList.filter(_.startsWith("http://%s/".format(targetHost)))
         val relativeLinks = linkList.filter(_.startsWith("/"))
         val r1Links = internalLinks.filter(_.contains(",,"))
 
-        println("%s; %s; %s".format(currentUrl, internalLinks.length, relativeLinks.length))
+        println("%s| %s| %s".format(currentUrl, internalLinks.length, relativeLinks.length))
 
         r1Links filterNot (r1History.contains(_)) foreach{ r1Link =>
           r1History add r1Link
