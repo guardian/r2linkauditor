@@ -13,3 +13,11 @@ libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-file" % "0.4
 libraryDependencies += "joda-time" % "joda-time" % "2.1"
 
 libraryDependencies += "org.joda" % "joda-convert" % "1.1"
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
+
+seq(com.github.retronym.SbtOneJar.oneJarSettings: _*)
+
+libraryDependencies += "commons-lang" % "commons-lang" % "2.6"
+
+mainClass in oneJar := Some("com.gu.LinkAuditor.Itsy")

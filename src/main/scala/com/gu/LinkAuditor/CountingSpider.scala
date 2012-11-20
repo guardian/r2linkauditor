@@ -1,7 +1,6 @@
 package com.gu.LinkAuditor
 
 import org.jsoup.Jsoup
-import org.jsoup.nodes._
 import collection.JavaConversions._
 import java.net.URL
 import collection.mutable.HashSet
@@ -14,10 +13,13 @@ object CountingSpider extends App {
   val r1History = new HashSet[String]
   val visitedLinks = new HashSet[String]
 
-  val dir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm").print(new DateTime))
+  val dir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm").print(new DateTime()))
   val linkComparisonFile = Path(dir, "linkComparison")
   val r1LinksFile = Path(dir, "r1Links")
   val brokenLinksFile = Path(dir, "404s")
+  val componentList = Path(dir, "components")
+
+  val bigTemplateSet = new HashSet
 
   def getUrlAndRecurse(currentUrl: String, recursionDepth: Int, previousUrl: String) {
     if (recursionDepth >= 0 && !visitedLinks.contains(currentUrl)) {
@@ -25,7 +27,11 @@ object CountingSpider extends App {
       val targetHost = target.getHost
 
       try {
-        val doc = Jsoup.connect(target.toString).userAgent("Guardian dotCom linkAuditor").get
+        val doc = Jsoup.connect(target.toString).userAgent("Guardian dotCom linkAuditor").timeout(100000).get
+
+        val templates = ComponentFinder.extractTemplateMentions(doc)
+        componentList.append("\n URL>> " + currentUrl + "\n")
+        componentList.append(templates.toList.mkString("\n"))
 
         val elementList = doc.select("a[href]").toList
 
@@ -54,10 +60,11 @@ object CountingSpider extends App {
         case ex: org.jsoup.HttpStatusException => {
           brokenLinksFile.append("Exception getting %s from %s\n".format(currentUrl, previousUrl))
         }
+        case ex: javax.net.ssl.SSLHandshakeException => Console.println("problem getting " + currentUrl)
       }
     }
   }
 
   println("Url; Absolute internal link count; Relative link count")
-  getUrlAndRecurse("http://www.guardian.co.uk", 2, "Start of job")
+  getUrlAndRecurse("http://www.gucode.gnl", 1, "Start of job")
 }
