@@ -10,7 +10,10 @@ object SinglePageLinkReporter extends App {
   def reportOutboundLinks(url: String) {
 
     def report(links: List[Element]) {
-      links.foreach(link => println("%s:\n%s\n".format(link.text(), link.attr("href"))))
+      links.foreach(link => {
+        println("%s:".format(link.text()))
+        println("%s".format(link.attr("href")))
+      })
     }
 
     val target = new URL(url)
@@ -23,10 +26,10 @@ object SinglePageLinkReporter extends App {
       val internalAbsLinks =
         links.filter(_.attr("href").startsWith("http://%s/".format(targetHost)))
           .sortBy(_.attr("href"))
-      val domainRelLinkElements = links.filter(_.attr("href").startsWith("/"))
+      val domainRelLinks = links.filter(_.attr("href").startsWith("/"))
         .sortBy(_.attr("href"))
       val externalLinks =
-        (links.toSet &~ internalAbsLinks.toSet &~ domainRelLinkElements.toSet).toList
+        (links.toSet &~ internalAbsLinks.toSet &~ domainRelLinks.toSet).toList
           .sortBy(_.attr("href"))
 
       println("+++++ INTERNAL ABS +++++")
@@ -35,11 +38,17 @@ object SinglePageLinkReporter extends App {
 
       println("+++++ DOMAIN REL +++++")
       println()
-      report(domainRelLinkElements)
+      report(domainRelLinks)
 
       println("+++++ EXTERNAL +++++")
       println()
       report(externalLinks)
+
+      println("+++++ SUMMARY +++++")
+      println("%d links".format(links.size))
+      println("%d internal absolute links".format(internalAbsLinks.size))
+      println("%d domain relative links".format(domainRelLinks.size))
+      println("%d external links".format(externalLinks.size))
 
     } catch {
       case ex: java.net.SocketTimeoutException => println("Timed out getting %s".format(url))
@@ -47,5 +56,5 @@ object SinglePageLinkReporter extends App {
     }
   }
 
-  reportOutboundLinks("http://gnm41072.int.gnl/www.guardian.co.uk/business/cartoon/2010/sep/02/3d-tv")
+  reportOutboundLinks(args(0))
 }
