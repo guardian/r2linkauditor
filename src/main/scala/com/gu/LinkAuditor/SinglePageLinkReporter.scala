@@ -11,7 +11,7 @@ object SinglePageLinkReporter extends App {
 
     def report(links: List[Element]) {
       links.foreach(link => {
-        println("%s:".format(link.text()))
+        println("%s:".format(link.parent.toString.replace('\n', ' ')))
         println("%s".format(link.attr("href")))
       })
     }
