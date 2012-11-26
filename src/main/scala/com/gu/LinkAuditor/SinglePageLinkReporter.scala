@@ -20,7 +20,7 @@ object SinglePageLinkReporter extends App {
     val targetHost = target.getHost
 
     try {
-      val doc = Jsoup.connect(target.toString).get
+      val doc = Jsoup.connect(target.toString).timeout(10000).get
 
       val links = doc.select("a[href]").toList.filterNot(_.attr("href").startsWith("#")) // don't want fragment urls.
       val internalAbsLinks =
