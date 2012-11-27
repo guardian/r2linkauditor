@@ -1,11 +1,10 @@
 package com.gu.LinkAuditor
 
-import org.jsoup.Jsoup
 import collection.JavaConversions._
 import java.net.URL
 import org.jsoup.nodes.Element
 
-object SinglePageLinkReporter extends App {
+object SinglePageLinkReporter extends App with Fetcher {
 
   def reportOutboundLinks(url: String) {
 
@@ -20,7 +19,7 @@ object SinglePageLinkReporter extends App {
     val targetHost = target.getHost
 
     try {
-      val doc = Jsoup.connect(target.toString).timeout(10000).get
+      val doc = get(target.toString)
 
       val links = doc.select("a[href]").toList.filterNot(_.attr("href").startsWith("#")) // don't want fragment urls.
       val internalAbsLinks =

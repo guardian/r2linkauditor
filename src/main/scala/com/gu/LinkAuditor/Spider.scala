@@ -6,7 +6,12 @@ import java.net.URL
 import collection.mutable.HashSet
 import org.jsoup.nodes.{Element, Document}
 
-trait Spider {
+trait Fetcher {
+  def get(url: String): Document =
+    Jsoup.connect(url).userAgent("Guardian dotCom linkAuditor").timeout(100000).get
+}
+
+trait Spider extends Fetcher {
 
   val visitedLinks = new HashSet[String]
 
@@ -16,7 +21,7 @@ trait Spider {
       val targetHost = target.getHost
 
       try {
-        val doc = Jsoup.connect(target.toString).userAgent("Guardian dotCom linkAuditor").timeout(100000).get
+        val doc = get(target.toString)
 
         val linkList = links(doc).map(_.attr("href")).filterNot(_.startsWith("#")) // don't want fragment urls.
         val internalLinks = linkList.filter(_.startsWith("http://%s/".format(targetHost)))
@@ -48,7 +53,7 @@ trait Spider {
     doc.select("a[href]").toList
   }
 
-  abstract def process(url: URL, doc: Document)
+  def process(url: URL, doc: Document)
 
-  abstract def logToBrokenLinksFile(originatingUrl: String, targetUrl: String)
+  def logToBrokenLinksFile(originatingUrl: String, targetUrl: String)
 }
