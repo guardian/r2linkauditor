@@ -15,6 +15,7 @@ object CountingSpider extends App with Spider {
   val linkComparisonFile = Path(dir, "linkComparison")
   val r1LinksFile = Path(dir, "r1Links")
   val brokenLinksFile = Path(dir, "404s")
+  val errorsFile = Path(dir, "errors")
   val componentList = Path(dir, "components")
 
   override def process(url: URL, doc: Document) {
@@ -38,6 +39,10 @@ object CountingSpider extends App with Spider {
 
   override def logToBrokenLinksFile(originatingUrl: String, targetUrl: String) {
     brokenLinksFile.append("Exception getting %s from %s\n".format(targetUrl, originatingUrl))
+  }
+
+  override def logToErrorsFile(statusCode: Int, originatingUrl: String, targetUrl: String) {
+    errorsFile.append("HTTP Exception %d: From %s to %s".format(statusCode, targetUrl, originatingUrl))
   }
 
   println("Url; Absolute internal link count; Relative link count")

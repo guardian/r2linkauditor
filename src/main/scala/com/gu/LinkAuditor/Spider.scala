@@ -42,7 +42,7 @@ trait Spider extends Fetcher {
           logToBrokenLinksFile(previousUrl, currentUrl)
         }
         case ex: org.jsoup.HttpStatusException => {
-          println("HTTP Exception %d: From %s to %s".format(ex.getStatusCode, previousUrl, ex.getUrl))
+          logToErrorsFile(ex.getStatusCode, previousUrl, currentUrl)
         }
         case ex: javax.net.ssl.SSLHandshakeException => Console.println("problem getting " + currentUrl)
       }
@@ -56,4 +56,6 @@ trait Spider extends Fetcher {
   def process(url: URL, doc: Document)
 
   def logToBrokenLinksFile(originatingUrl: String, targetUrl: String)
+
+  def logToErrorsFile(statusCode: Int, originatingUrl: String, targetUrl: String)
 }

@@ -13,6 +13,7 @@ object LinkFindingSpider extends App with Spider {
 
   val dir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm").print(new DateTime()))
   val brokenLinksFile = Path(dir, "404s")
+  val errorsFile = Path(dir, "errors")
   val linksFoundFile = Path(dir, "found")
   val parents = new mutable.HashSet[String]
 
@@ -29,6 +30,10 @@ object LinkFindingSpider extends App with Spider {
 
   override def logToBrokenLinksFile(originatingUrl: String, targetUrl: String) {
     brokenLinksFile.append("Exception getting %s from %s\n".format(targetUrl, originatingUrl))
+  }
+
+  override def logToErrorsFile(statusCode: Int, originatingUrl: String, targetUrl: String) {
+    errorsFile.append("HTTP Exception %d: From %s to %s".format(statusCode, targetUrl, originatingUrl))
   }
 
   linksFoundFile.append("From\tTo\tParent Element\n")
