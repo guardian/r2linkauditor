@@ -6,6 +6,8 @@ project/target/*
 *.log
 links-*/
 
+*.csv
+
 # sbt specific
 dist/*
 target/
