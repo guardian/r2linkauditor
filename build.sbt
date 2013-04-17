@@ -4,20 +4,17 @@ version := "1.0"
 
 scalaVersion := "2.9.1"
 
-libraryDependencies += "org.jsoup" % "jsoup" % "1.7.1"
-
-libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.1-seq"
-
-libraryDependencies += "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.1-seq"
-
-libraryDependencies += "joda-time" % "joda-time" % "2.1"
-
-libraryDependencies += "org.joda" % "joda-convert" % "1.1"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
+libraryDependencies ++= Seq(
+    "org.jsoup" % "jsoup" % "1.7.1",
+    "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.1-seq",
+    "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.1-seq",
+    "joda-time" % "joda-time" % "2.1",
+    "org.joda" % "joda-convert" % "1.1",
+    "org.scalatest" %% "scalatest" % "1.8" % "test",
+    "commons-lang" % "commons-lang" % "2.6",
+    "org.mockito" % "mockito-core" % "1.9.5"
+)
 
 seq(com.github.retronym.SbtOneJar.oneJarSettings: _*)
-
-libraryDependencies += "commons-lang" % "commons-lang" % "2.6"
 
 mainClass in oneJar := Some("com.gu.LinkAuditor.Itsy")
