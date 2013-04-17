@@ -12,13 +12,15 @@ class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: Li
   lazy val (linksToOriginalDomain, linksToNonGuDomains) = partitionLinksToMatch(originalHost, externalLinks)
   lazy val (workingLinksToTargetDomain, brokenLinkToTargetDomain) = linksToTargetDomain.partition(link => httpClient.getStatusCode(link) == 200)
   lazy val (workingLinksToOriginalDomain, brokenLinksToOriginalDomain) = linksToOriginalDomain.partition(link => httpClient.getStatusCode(link) == 200)
-  lazy val (originalDomainLinksThatAreRedirectable, originalDomainLinksThatAreNotRedirectable) = workingLinksToOriginalDomain.partition{link =>
-    val original: URL = new URL(link)
-    val targetHostLink: String = new URL(original.getProtocol, targetHost, original.getFile).toExternalForm
-    httpClient.getStatusCode(targetHostLink) == 200
+  lazy val (originalDomainLinksThatAreRedirectable, originalDomainLinksThatAreNotRedirectable) = workingLinksToOriginalDomain.partition {
+    link =>
+      val original: URL = new URL(link)
+      val targetHostLink: String = new URL(original.getProtocol, targetHost, original.getFile).toExternalForm
+      httpClient.getStatusCode(targetHostLink) == 200
   }
 
-  def partitionLinksToMatch(host: String, links: List[String]): (List[String], List[String]) = { links.partition {
+  def partitionLinksToMatch(host: String, links: List[String]): (List[String], List[String]) = {
+    links.partition {
       link => {
         try {
           val linkUrl = new URL(link)
@@ -54,4 +56,24 @@ class HttpChecker {
     }
   }
 
+}
+
+object PageLinkAuditorClient extends App {
+
+  val originalNfUrl = "http://www.gulocal.co.uk/"
+  val targetNfUrl = "http://www.thegulocal.com/"
+  val allLinks = Jsoup.connect(targetNfUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
+  val auditor = new PageLinkAuditor(targetNfUrl, originalNfUrl, allLinks, new HttpChecker)
+
+  println("+++++ Links to non-GU domains +++++")
+  auditor.linksToNonGuDomains.foreach(println)
+  println()
+  println("+++++ Links to original domain +++++")
+  auditor.linksToOriginalDomain.foreach(println)
+  println()
+  println("+++++ Links to target domain +++++")
+  auditor.linksToTargetDomain.foreach(println)
+  println()
+  println("+++++ Working links to target domain +++++")
+  auditor.workingLinksToTargetDomain.foreach(println)
 }
