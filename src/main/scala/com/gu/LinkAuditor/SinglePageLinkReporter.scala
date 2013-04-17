@@ -1,32 +1,34 @@
 package com.gu.LinkAuditor
 
-import org.jsoup.Jsoup
 import collection.JavaConversions._
 import java.net.URL
 import org.jsoup.nodes.Element
 
-object SinglePageLinkReporter extends App {
+object SinglePageLinkReporter extends App with Fetcher {
 
   def reportOutboundLinks(url: String) {
 
     def report(links: List[Element]) {
-      links.foreach(link => println("%s:\n%s\n".format(link.text(), link.attr("href"))))
+      links.foreach(link => {
+        println("%s:".format(link.parent.toString.replace('\n', ' ')))
+        println("%s".format(link.attr("href")))
+      })
     }
 
     val target = new URL(url)
     val targetHost = target.getHost
 
     try {
-      val doc = Jsoup.connect(target.toString).get
+      val doc = get(target.toString)
 
       val links = doc.select("a[href]").toList.filterNot(_.attr("href").startsWith("#")) // don't want fragment urls.
       val internalAbsLinks =
         links.filter(_.attr("href").startsWith("http://%s/".format(targetHost)))
           .sortBy(_.attr("href"))
-      val domainRelLinkElements = links.filter(_.attr("href").startsWith("/"))
+      val domainRelLinks = links.filter(_.attr("href").startsWith("/"))
         .sortBy(_.attr("href"))
       val externalLinks =
-        (links.toSet &~ internalAbsLinks.toSet &~ domainRelLinkElements.toSet).toList
+        (links.toSet &~ internalAbsLinks.toSet &~ domainRelLinks.toSet).toList
           .sortBy(_.attr("href"))
 
       println("+++++ INTERNAL ABS +++++")
@@ -35,11 +37,17 @@ object SinglePageLinkReporter extends App {
 
       println("+++++ DOMAIN REL +++++")
       println()
-      report(domainRelLinkElements)
+      report(domainRelLinks)
 
       println("+++++ EXTERNAL +++++")
       println()
       report(externalLinks)
+
+      println("+++++ SUMMARY +++++")
+      println("%d links".format(links.size))
+      println("%d internal absolute links".format(internalAbsLinks.size))
+      println("%d domain relative links".format(domainRelLinks.size))
+      println("%d external links".format(externalLinks.size))
 
     } catch {
       case ex: java.net.SocketTimeoutException => println("Timed out getting %s".format(url))
@@ -47,5 +55,5 @@ object SinglePageLinkReporter extends App {
     }
   }
 
-  reportOutboundLinks("http://gnm41072.int.gnl/www.guardian.co.uk/business/cartoon/2010/sep/02/3d-tv")
+  reportOutboundLinks(args(0))
 }
