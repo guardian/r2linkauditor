@@ -12,7 +12,7 @@ class LinkSorterTest extends FunSuite with MockitoSugar {
     val brokenTheGuardianComLink = "http://www.theguardian.com/broken/article/link"
     val workingGuardianCoUkLink = "http://www.guardian.co.uk/old/link"
 
-    val httpClient = mock[HttpClient]
+    val httpClient = mock[HttpChecker]
     goodTheGuardianComLink.foreach {
       link =>
         when(httpClient.getStatusCode(link)) thenReturn 200
