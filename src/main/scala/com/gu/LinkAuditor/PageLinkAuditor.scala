@@ -40,23 +40,7 @@ class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: Li
 
 }
 
-class HttpChecker {
-  def getStatusCode(url: String): Int = {
-    try {
-      Jsoup.connect(url).followRedirects(false).timeout(60000).get()
-      println("Successfully fetched " + url)
-      200
-    } catch {
-      case e: HttpStatusException => e.getStatusCode
-      case e => {
-        println("Error connecting to " + url)
-        println("Error: " + e.getMessage)
-        -1
-      }
-    }
-  }
 
-}
 
 object PageLinkAuditorClient extends App {
 
