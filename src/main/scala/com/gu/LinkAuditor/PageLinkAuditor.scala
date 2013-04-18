@@ -44,20 +44,27 @@ class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: Li
 
 object PageLinkAuditorClient extends App {
 
-  val originalNfUrl = "http://www.gulocal.co.uk/"
-  val targetNfUrl = "http://www.thegulocal.com/"
-  val allLinks = Jsoup.connect(targetNfUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
-  val auditor = new PageLinkAuditor(targetNfUrl, originalNfUrl, allLinks, new HttpChecker)
+  val oldUrl = args(0)
+  val newUrl = args(1)
+  val allLinks = Jsoup.connect(newUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
+  val auditor = new PageLinkAuditor(newUrl, oldUrl, allLinks, new HttpChecker)
 
-  println("+++++ Links to non-GU domains +++++")
-  auditor.linksToNonGuDomains.foreach(println)
-  println()
-  println("+++++ Links to original domain +++++")
-  auditor.linksToOriginalDomain.foreach(println)
-  println()
-  println("+++++ Links to target domain +++++")
-  auditor.linksToTargetDomain.foreach(println)
-  println()
-  println("+++++ Working links to target domain +++++")
-  auditor.workingLinksToTargetDomain.foreach(println)
+  def report(links: List[String], linkCategory: String) {
+    println()
+    println()
+    println("+++++ %s +++++".format(linkCategory))
+    println()
+    if (links.isEmpty) println("NONE")
+    else links.foreach(println)
+    println()
+    println()
+  }
+
+  report(auditor.workingLinksToTargetDomain, "Working links to new domain")
+  report(auditor.workingLinksToOriginalDomain, "Working links to old domain")
+  report(auditor.brokenLinkToTargetDomain, "Broken links to new domain")
+  report(auditor.brokenLinksToOriginalDomain, "Broken links to old domain")
+  report(auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be redirected to new domain")
+  report(auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be redirected to new domain")
+
 }
