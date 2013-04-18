@@ -7,9 +7,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTime
 import scalax.file.Path
 
-class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: List[String], httpClient: HttpChecker) {
-  val targetHost = new URL(targetDomain).getHost
-  val originalHost = new URL(originalDomain).getHost
+class PageLinkAuditor(targetHost: String, originalHost: String, allLinks: List[String], httpClient: HttpChecker) {
 
   lazy val (linksToTargetDomain, externalLinks) = partitionLinksToMatch(targetHost, allLinks)
   lazy val (linksToOriginalDomain, linksToNonGuDomains) = partitionLinksToMatch(originalHost, externalLinks)
@@ -48,17 +46,36 @@ object PageLinkAuditorClient extends App {
 
   val oldUrl = args(0)
   val newUrl = args(1)
+  val recursionDepth = args(2).toInt
 
-  val reportFile = {
-    val dir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
-    val urlPathAsFilename = new URL(newUrl).getFile.replace('/', '_') + ".txt"
-    Path(dir, urlPathAsFilename)
+  val reportDir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
+
+  val targetHost = new URL(newUrl).getHost
+  val originalHost = new URL(oldUrl).getHost
+
+  def audit(url: String, recursionDepth: Int) {
+    if (recursionDepth > 0) {
+      val allLinks = Jsoup.connect(newUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
+      val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, new CachingHttpChecker)
+
+      val reportFile = {
+        val urlPathAsFilename = new URL(url).getFile.replace('/', '_') + ".txt"
+        Path(reportDir, urlPathAsFilename)
+      }
+
+      reportFile.append("Checking URL %s\n\n".format(url))
+      report(reportFile, auditor.workingLinksToTargetDomain, "Working links to new domain")
+      report(reportFile, auditor.workingLinksToOriginalDomain, "Working links to old domain")
+      report(reportFile, auditor.brokenLinkToTargetDomain, "Broken links to new domain")
+      report(reportFile, auditor.brokenLinksToOriginalDomain, "Broken links to old domain")
+      report(reportFile, auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain")
+      report(reportFile, auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain")
+
+      auditor.workingLinksToTargetDomain foreach (audit(_, recursionDepth - 1))
+    }
   }
 
-  val allLinks = Jsoup.connect(newUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
-  val auditor = new PageLinkAuditor(newUrl, oldUrl, allLinks, new HttpChecker)
-
-  def report(links: List[String], linkCategory: String) {
+  def report(reportFile: Path, links: List[String], linkCategory: String) {
     reportFile.append('\n')
     reportFile.append('\n')
     reportFile.append("+++++ %s +++++\n".format(linkCategory))
@@ -69,13 +86,7 @@ object PageLinkAuditorClient extends App {
     reportFile.append('\n')
   }
 
-  reportFile.append("Old URL: %s\n".format(oldUrl))
-  reportFile.append("New URL: %s\n".format(newUrl))
-  report(auditor.workingLinksToTargetDomain, "Working links to new domain")
-  report(auditor.workingLinksToOriginalDomain, "Working links to old domain")
-  report(auditor.brokenLinkToTargetDomain, "Broken links to new domain")
-  report(auditor.brokenLinksToOriginalDomain, "Broken links to old domain")
-  report(auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain")
-  report(auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain")
+  println("Writing to " + reportDir)
+  audit(newUrl, recursionDepth)
 
 }
