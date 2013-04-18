@@ -3,6 +3,9 @@ package com.gu.LinkAuditor
 import org.jsoup.{HttpStatusException, Jsoup}
 import java.net.URL
 import scala.collection.JavaConversions._
+import org.joda.time.format.DateTimeFormat
+import org.joda.time.DateTime
+import scalax.file.Path
 
 class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: List[String], httpClient: HttpChecker) {
   val targetHost = new URL(targetDomain).getHost
@@ -41,30 +44,38 @@ class PageLinkAuditor(targetDomain: String, originalDomain: String, allLinks: Li
 }
 
 
-
 object PageLinkAuditorClient extends App {
 
   val oldUrl = args(0)
   val newUrl = args(1)
+
+  val reportFile = {
+    val dir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
+    val urlPathAsFilename = new URL(newUrl).getFile.replace('/', '_') + ".txt"
+    Path(dir, urlPathAsFilename)
+  }
+
   val allLinks = Jsoup.connect(newUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
   val auditor = new PageLinkAuditor(newUrl, oldUrl, allLinks, new HttpChecker)
 
   def report(links: List[String], linkCategory: String) {
-    println()
-    println()
-    println("+++++ %s +++++".format(linkCategory))
-    println()
-    if (links.isEmpty) println("NONE")
-    else links.foreach(println)
-    println()
-    println()
+    reportFile.append('\n')
+    reportFile.append('\n')
+    reportFile.append("+++++ %s +++++\n".format(linkCategory))
+    reportFile.append('\n')
+    if (links.isEmpty) reportFile.append("NONE\n")
+    else links.foreach(link => reportFile.append(link + '\n'))
+    reportFile.append('\n')
+    reportFile.append('\n')
   }
 
+  reportFile.append("Old URL: %s\n".format(oldUrl))
+  reportFile.append("New URL: %s\n".format(newUrl))
   report(auditor.workingLinksToTargetDomain, "Working links to new domain")
   report(auditor.workingLinksToOriginalDomain, "Working links to old domain")
   report(auditor.brokenLinkToTargetDomain, "Broken links to new domain")
   report(auditor.brokenLinksToOriginalDomain, "Broken links to old domain")
-  report(auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be redirected to new domain")
-  report(auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be redirected to new domain")
+  report(auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain")
+  report(auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain")
 
 }
