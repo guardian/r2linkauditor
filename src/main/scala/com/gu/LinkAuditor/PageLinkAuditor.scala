@@ -53,10 +53,12 @@ object PageLinkAuditorClient extends App {
   val targetHost = new URL(newUrl).getHost
   val originalHost = new URL(oldUrl).getHost
 
+  val httpChecker = new CachingHttpChecker
+
   def audit(url: String, recursionDepth: Int) {
     if (recursionDepth > 0) {
       val allLinks = Jsoup.connect(newUrl).followRedirects(false).timeout(0).get().select("a[href]").map(_.attr("href")).filter(_.startsWith("http://")).distinct.toList
-      val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, new CachingHttpChecker)
+      val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, httpChecker)
 
       val reportFile = {
         val urlPathAsFilename = new URL(url).getFile.replace('/', '_') + ".txt"
