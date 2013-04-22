@@ -25,7 +25,7 @@ class PageLinkAuditorTest extends FunSuite with MockitoSugar {
     val listOfLinks = goodTheGuardianComLinks ::: brokenTheGuardianComLinks :::
       workingGuardianCoUkLinks ::: brokenGuardianCoUkLinks ::: externalLinks
 
-    val sorter: PageLinkAuditor = new PageLinkAuditor("http://www.theguardian.com", "http://www.guardian.co.uk", listOfLinks, httpClient)
+    val sorter: PageLinkAuditor = new PageLinkAuditor("www.theguardian.com", "www.guardian.co.uk", listOfLinks, httpClient)
 
     assert(sorter.brokenLinksToOriginalDomain === brokenGuardianCoUkLinks)
     assert(sorter.brokenLinkToTargetDomain === brokenTheGuardianComLinks)
