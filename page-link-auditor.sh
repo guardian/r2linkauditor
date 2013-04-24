@@ -7,8 +7,9 @@
 # 3. Relative path of the page (eg "/music/2013/jan/20")
 # 4. Depth of links to follow
 
-oldUrl="http://""$1""$3"
-newUrl="http://""$2""$3"
+oldHost=$1
+newHost=$2
+seedPath=$3
 depth=$4
 
-eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageLinkAuditorClient $oldUrl $newUrl $depth'"
+eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageSpiderClient $oldHost $newHost $seedPath $depth'"
