@@ -26,16 +26,21 @@ class PageLinkAuditor(targetHost: String, originalHost: String, allLinks: List[S
 }
 
 
-class PageSpider(originalHost: String, targetHost: String, seedPath: String, recursionDepth: Int) {
+class PageSpider(originalHost: String, targetHost: String, seedPath: String, recursionDepth: Int, proxy: Option[String]) {
 
   val reportDir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
 
-  val httpChecker = new CachingHttpChecker
+  val httpChecker = new CachingHttpChecker(proxy)
 
   def audit(url: String, recursionDepth: Int) {
     if (recursionDepth > 0) {
       val allLinks = httpChecker.listAllLinks(url)
       val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, httpChecker)
+
+      val refsToOriginalHost = {
+        if (allLinks.isEmpty) Nil
+        else httpChecker.findContentInContext(url, originalHost)
+      }
 
       val reportFile = {
         val urlPathAsFilename = new URL(url).getFile.replace('/', '_') + ".txt"
@@ -50,6 +55,13 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
       report(reportFile, auditor.brokenLinksToOriginalDomain, "Broken links to old domain", 4)
       report(reportFile, auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain", 5)
       report(reportFile, auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain", 6)
+      if (!refsToOriginalHost.isEmpty) {
+        reportFile.append("\n+++++ References to '%s' found in body +++++\n".format(originalHost))
+        reportFile.append("Count of references found: %d\n\n".format(refsToOriginalHost.size))
+        refsToOriginalHost foreach {
+          ref => reportFile.append("[7] %s\n\n".format(ref))
+        }
+      }
 
       auditor.workingLinksToTargetDomain.par foreach (audit(_, recursionDepth - 1))
     }
@@ -59,7 +71,7 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
     reportFile.append('\n')
     reportFile.append('\n')
     reportFile.append("+++++ %s +++++\n".format(linkCategory))
-    reportFile.append("Links found: %d\n".format(links.size))
+    reportFile.append("Count of links found: %d\n".format(links.size))
     reportFile.append('\n')
     if (links.isEmpty) reportFile.append("NONE\n")
     else links.foreach(link => reportFile.append("[%s] %s\n".format(categoryKey, link)))
@@ -79,7 +91,8 @@ object PageSpiderClient extends App {
   val newHost = args(1)
   val seedPath = args(2)
   val recursionDepth = args(3).toInt
+  val proxy = args.lift(4)
 
-  val spider = new PageSpider(oldHost, newHost, seedPath, recursionDepth)
+  val spider = new PageSpider(oldHost, newHost, seedPath, recursionDepth, proxy)
 
 }

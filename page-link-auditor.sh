@@ -6,10 +6,12 @@
 # 2. New host of the page (eg "www.thegulocal.com")
 # 3. Relative path of the page (eg "/music/2013/jan/20")
 # 4. Depth of links to follow
+# 5. Optional proxy (eg "ec2-xyz.com:8080")
 
 oldHost=$1
 newHost=$2
 seedPath=$3
 depth=$4
+proxy=$5
 
-eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageSpiderClient $oldHost $newHost $seedPath $depth'"
+eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageSpiderClient $oldHost $newHost $seedPath $depth $proxy'"
