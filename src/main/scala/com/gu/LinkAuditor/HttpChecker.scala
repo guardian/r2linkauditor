@@ -20,7 +20,8 @@ class HttpChecker(val proxy: Option[String] = None) {
     try {
       val response = connectTo(url).execute()
       val statusCode = response.statusCode()
-      println("Fetched %s [%d]".format(url, response.statusCode()))
+      print("Fetched %s [%d]".format(url, response.statusCode()))
+      Option(response.header("X-GU-PageRenderer")) foreach (renderer => println(" rendered by %s\n".format(renderer)))
       statusCode
     } catch {
       case e: HttpStatusException => {
