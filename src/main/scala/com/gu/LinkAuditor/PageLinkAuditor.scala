@@ -68,15 +68,11 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
   }
 
   def report(reportFile: Path, links: ParSeq[String], linkCategory: String, categoryKey: Int) {
-    reportFile.append('\n')
-    reportFile.append('\n')
-    reportFile.append("+++++ %s +++++\n".format(linkCategory))
-    reportFile.append("Count of links found: %d\n".format(links.size))
-    reportFile.append('\n')
-    if (links.isEmpty) reportFile.append("NONE\n")
-    else links.foreach(link => reportFile.append("[%s] %s\n".format(categoryKey, link)))
-    reportFile.append('\n')
-    reportFile.append('\n')
+    val linkReport = if (links.isEmpty) "NONE"
+    else links.map(link => "[%s] %s".format(categoryKey, link)).mkString("\n")
+    val msg = "\n\n+++++ %s +++++\nCount of links found: %d\n\n%s\n\n".format(linkCategory, links.size, linkReport)
+
+    reportFile.append(msg)
   }
 
   println("Writing to " + reportDir)
