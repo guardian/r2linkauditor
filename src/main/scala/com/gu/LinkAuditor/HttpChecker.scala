@@ -13,15 +13,18 @@ class HttpChecker(val proxy: Option[String] = None) {
   }
 
   private def connectTo(url: String) = {
-    Jsoup.connect(url).followRedirects(false).timeout(60000)
+    Jsoup.connect(url).followRedirects(false).timeout(60000).header("X-GU-DEV", "true")
   }
 
   def getStatusCode(url: String): Int = {
     try {
       val response = connectTo(url).execute()
       val statusCode = response.statusCode()
-      print("Fetched %s [%d]".format(url, response.statusCode()))
-      Option(response.header("X-GU-PageRenderer")) foreach (renderer => println(" rendered by %s\n".format(renderer)))
+
+      val msg = "Fetched %s [%d]".format(url, response.statusCode()) +
+        (Option(response.header("X-GU-PageRenderer")) map (renderer => " rendered by %s".format(renderer))).getOrElse("")
+      println(msg)
+
       statusCode
     } catch {
       case e: HttpStatusException => {
