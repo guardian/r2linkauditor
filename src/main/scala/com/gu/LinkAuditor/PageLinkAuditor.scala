@@ -4,7 +4,7 @@ import java.net.URL
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTime
 import scalax.file.Path
-import scala.collection.parallel.ParSeq
+import scala.collection.parallel.{ParSeq, ForkJoinTasks}
 
 class PageLinkAuditor(targetHost: String, originalHost: String, allLinks: List[String], httpClient: HttpChecker) {
 
@@ -30,7 +30,7 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
 
   val reportDir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
 
-  val httpChecker = new CachingHttpChecker(proxy)
+  val httpChecker = new CachingHttpChecker(new JsoupHttpChecker(proxy))
 
   def audit(url: String, recursionDepth: Int) {
     if (recursionDepth > 0) {
@@ -82,6 +82,8 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
 
 
 object PageSpiderClient extends App {
+
+  ForkJoinTasks.defaultForkJoinPool.setParallelism(32)
 
   val oldHost = args(0)
   val newHost = args(1)

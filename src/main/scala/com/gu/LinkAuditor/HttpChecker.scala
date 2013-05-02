@@ -3,7 +3,15 @@ package com.gu.LinkAuditor
 import org.jsoup.{HttpStatusException, Jsoup}
 import scala.collection.JavaConversions._
 
-class HttpChecker(val proxy: Option[String] = None) {
+trait HttpChecker {
+  def getStatusCode(url: String): Int
+
+  def listAllLinks(url: String): List[String]
+
+  def findContentInContext(url: String, toFind: String): List[String]
+}
+
+class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
 
   proxy foreach {
     p =>
