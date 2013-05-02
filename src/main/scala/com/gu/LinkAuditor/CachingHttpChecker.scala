@@ -1,25 +1,22 @@
 package com.gu.LinkAuditor
 
 import scala.collection.mutable
-import scala.collection.JavaConversions._
-import java.util.concurrent.ConcurrentHashMap
 
 class CachingHttpChecker(delegate: HttpChecker) extends HttpChecker {
 
-  val statusCodeCache: mutable.ConcurrentMap[String, Int] =
-    new JConcurrentMapWrapper(new ConcurrentHashMap[String, Int]())
-
-  val contentReferencesCache: mutable.ConcurrentMap[(String, String), List[String]] =
-    new JConcurrentMapWrapper(new ConcurrentHashMap[(String, String), List[String]]())
+  val statusCodeCache: mutable.Map[String, Int] = mutable.Map[String, Int]()
+  val contentReferencesCache: mutable.Map[(String, String), List[String]] = mutable.Map[(String, String), List[String]]()
 
   override def getStatusCode(url: String): Int = {
-    val prevValue = statusCodeCache.putIfAbsent(url, delegate.getStatusCode(url))
-    prevValue.getOrElse(statusCodeCache.get(url).get)
+    statusCodeCache.get(url).getOrElse(synchronized {
+      statusCodeCache.getOrElseUpdate(url, delegate.getStatusCode(url))
+    })
   }
 
   override def findContentInContext(url: String, toFind: String): List[String] = {
-    val prevValue = contentReferencesCache.putIfAbsent((url, toFind), delegate.findContentInContext(url, toFind))
-    prevValue.getOrElse(contentReferencesCache.get((url, toFind)).get)
+    contentReferencesCache.get((url, toFind)).getOrElse(synchronized {
+      contentReferencesCache.getOrElseUpdate((url, toFind), delegate.findContentInContext(url, toFind))
+    })
   }
 
   def listAllLinks(url: String): List[String] = delegate.listAllLinks(url)

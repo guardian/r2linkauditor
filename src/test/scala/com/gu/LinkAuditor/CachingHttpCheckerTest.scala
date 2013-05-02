@@ -18,6 +18,7 @@ class CachingHttpCheckerTest extends FunSuite with MockitoSugar {
     urls foreach (checker.getStatusCode(_))
 
     assert(checker.statusCodeCache.size === 1)
+    verify(delegate, times(1)).getStatusCode("url")
   }
 
   test("should only cache references in same request in different threads once") {
@@ -27,6 +28,7 @@ class CachingHttpCheckerTest extends FunSuite with MockitoSugar {
     urls foreach (checker.findContentInContext(_, "ref"))
 
     assert(checker.contentReferencesCache.size === 1)
+    verify(delegate, times(1)).findContentInContext("url", "ref")
   }
 
 }
