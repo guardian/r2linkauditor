@@ -13,5 +13,8 @@ newHost=$2
 seedPath=$3
 depth=$4
 proxy=$5
+now=$(date +%FT%H-%M)
 
-eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageSpiderClient $oldHost $newHost $seedPath $depth $proxy'"
+eval "sbt -Dsbt.log.noformat=true 'run-main com.gu.LinkAuditor.PageSpiderClient $oldHost $newHost $seedPath $depth $proxy'" \
+    > audit.out.$now.log \
+    2> audit.err.$now.log

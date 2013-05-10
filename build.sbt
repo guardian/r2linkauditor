@@ -10,9 +10,10 @@ libraryDependencies ++= Seq(
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.1-seq",
     "joda-time" % "joda-time" % "2.1",
     "org.joda" % "joda-convert" % "1.1",
-    "org.scalatest" %% "scalatest" % "1.8" % "test",
     "commons-lang" % "commons-lang" % "2.6",
-    "org.mockito" % "mockito-core" % "1.9.5"
+    "net.sourceforge.htmlunit" % "htmlunit" % "2.12",
+    "org.scalatest" %% "scalatest" % "1.8" % "test",
+    "org.mockito" % "mockito-core" % "1.9.5" % "test"
 )
 
 seq(com.github.retronym.SbtOneJar.oneJarSettings: _*)

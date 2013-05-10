@@ -2,6 +2,9 @@ package com.gu.LinkAuditor
 
 import org.jsoup.{HttpStatusException, Jsoup}
 import scala.collection.JavaConversions._
+import com.gargoylesoftware.htmlunit._
+import com.gargoylesoftware.htmlunit.html.{DomElement, DomAttr, HtmlPage}
+import java.net.URL
 
 trait HttpChecker {
   def getStatusCode(url: String): Int
@@ -11,26 +14,38 @@ trait HttpChecker {
   def findContentInContext(url: String, toFind: String): List[String]
 }
 
-class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
 
-  proxy foreach {
-    p =>
-      val proxyParts = p.split(":")
-      System.setProperty("http.proxyHost", proxyParts(0))
-      System.setProperty("http.proxyPort", proxyParts(1))
+class Proxy(hostAndPort: String) {
+  private val pattern = """(\w+):(\d+)""".r
+
+  val (host: String, port: Int) = hostAndPort match {
+    case pattern(h, p) => (h, p.toInt)
+    case _ => ("", -1)
+  }
+}
+
+
+class JsoupHttpChecker(val proxyHostAndPort: Option[String] = None) extends HttpChecker {
+
+  proxyHostAndPort foreach {
+    hostAndPort =>
+      val proxy = new Proxy(hostAndPort)
+      System.setProperty("http.proxyHost", proxy.host)
+      System.setProperty("http.proxyPort", proxy.port.toString)
   }
 
   private def connectTo(url: String) = {
     Jsoup.connect(url).followRedirects(false).timeout(60000).header("X-GU-DEV", "true")
   }
 
-  def getStatusCode(url: String): Int = {
+  override def getStatusCode(url: String): Int = {
     try {
       val response = connectTo(url).execute()
       val statusCode = response.statusCode()
 
-      val msg = "Fetched %s [%d]".format(url, response.statusCode()) +
-        (Option(response.header("X-GU-PageRenderer")) map (renderer => " rendered by %s".format(renderer))).getOrElse("")
+      val msg = "Fetched %s [%d]".format(url, statusCode) +
+        (Option(response.header("X-GU-PageRenderer")) map
+          (renderer => " rendered by %s".format(renderer))).getOrElse("")
       println(msg)
 
       statusCode
@@ -46,7 +61,7 @@ class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
     }
   }
 
-  def listAllLinks(url: String): List[String] = {
+  override def listAllLinks(url: String): List[String] = {
     try {
       val response = connectTo(url).execute()
       val statusCode = response.statusCode()
@@ -54,7 +69,7 @@ class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
         response.parse().
           getElementsByAttribute("href").map(_.attr("href")).
           filter(_.startsWith("http://"))
-          .distinct.toList.sorted
+          .sorted.distinct.toList
       } else {
         println("ERROR finding links in %s: [%d]".format(url, statusCode))
         Nil
@@ -71,7 +86,7 @@ class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
     }
   }
 
-  def findContentInContext(url: String, toFind: String): List[String] = {
+  override def findContentInContext(url: String, toFind: String): List[String] = {
     try {
       val elements = connectTo(url).get().getElementsContainingOwnText(toFind)
       (elements map (_.toString)).toList
@@ -84,6 +99,71 @@ class JsoupHttpChecker(val proxy: Option[String] = None) extends HttpChecker {
         println("ERROR fetching %s: [%s]".format(url, e.getMessage))
         Nil
       }
+    }
+  }
+
+}
+
+
+class HtmlUnitHttpChecker(val proxyHostAndPort: Option[String] = None) extends HttpChecker {
+
+  // webclient is not thread-safe so building a new one for each request
+  private def webClient = {
+    val client = new WebClient
+    client.addRequestHeader("X-GU-DEV", "true")
+    val options = client.getOptions
+    options.setTimeout(60000)
+    options.setRedirectEnabled(false)
+    options.setCssEnabled(true)
+    options.setPopupBlockerEnabled(true)
+    options.setPrintContentOnFailingStatusCode(false)
+    options.setThrowExceptionOnFailingStatusCode(false)
+    options.setThrowExceptionOnScriptError(false)
+    proxyHostAndPort foreach {
+      hostAndPort =>
+        val proxy = new Proxy(hostAndPort)
+        options.setProxyConfig(new ProxyConfig(proxy.host, proxy.port))
+    }
+    client
+  }
+
+  override def getStatusCode(url: String): Int = {
+
+    // a head request is accurate enough to indicate working or not
+    val request = new WebRequest(new URL(url), HttpMethod.HEAD)
+    val response = webClient.loadWebResponse(request)
+    val statusCode = response.getStatusCode
+
+    val msg = "Thread %s fetched %s [%d]".format(Thread.currentThread.getName,url, statusCode) +
+      (Option(response.getResponseHeaderValue("X-GU-PageRenderer")) map
+        (renderer => " rendered by %s".format(renderer))).getOrElse("")
+    println(msg)
+
+    statusCode
+  }
+
+  private def processPage(url: String)(process: (HtmlPage) => List[String]): List[String] = {
+    val statusCode = getStatusCode(url)
+    if (statusCode == 200) process(webClient.getPage(url).asInstanceOf[HtmlPage])
+    else {
+      println("ERROR processing %s: [%d]".format(url, statusCode))
+      Nil
+    }
+  }
+
+  override def listAllLinks(url: String): List[String] = {
+    processPage(url) {
+      page =>
+        val linkAttributes = page.getByXPath("//a/@href")
+        linkAttributes.map(_.asInstanceOf[DomAttr].getValue).filter(_.startsWith("http://")).sorted.distinct.toList
+    }
+  }
+
+  override def findContentInContext(url: String, toFind: String): List[String] = {
+    processPage(url) {
+      page =>
+        val matchingElements = page.getByXPath("//*[contains(text(), '%s')]".format(toFind))
+        matchingElements.map(_.asInstanceOf[DomElement].asXml).toList
     }
   }
 

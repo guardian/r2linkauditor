@@ -4,36 +4,41 @@ import java.net.URL
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTime
 import scalax.file.Path
-import scala.collection.parallel.{ParSeq, ForkJoinTasks}
 
 class PageLinkAuditor(targetHost: String, originalHost: String, allLinks: List[String], httpClient: HttpChecker) {
 
-  lazy val (linksToTargetDomain, externalLinks) = partitionLinksToMatch(targetHost, allLinks.par)
-  lazy val (linksToOriginalDomain, linksToNonGuDomains) = partitionLinksToMatch(originalHost, externalLinks.par)
-  lazy val (workingLinksToTargetDomain, brokenLinksToTargetDomain) = linksToTargetDomain.par.partition(link => httpClient.getStatusCode(link) == 200)
-  lazy val (workingLinksToOriginalDomain, brokenLinksToOriginalDomain) = linksToOriginalDomain.par.partition(link => httpClient.getStatusCode(link) == 200)
-  lazy val (originalDomainLinksThatAreRedirectable, originalDomainLinksThatAreNotRedirectable) = workingLinksToOriginalDomain.par.partition {
+  lazy val (linksToTargetDomain, externalLinks) = partitionLinksToMatch(targetHost, allLinks)
+  lazy val (linksToOriginalDomain, linksToNonGuDomains) = partitionLinksToMatch(originalHost, externalLinks)
+  lazy val (workingLinksToTargetDomain, brokenLinksToTargetDomain) = linksToTargetDomain.partition(link => httpClient.getStatusCode(link) == 200)
+  lazy val (workingLinksToOriginalDomain, brokenLinksToOriginalDomain) = linksToOriginalDomain.partition(link => httpClient.getStatusCode(link) == 200)
+  lazy val (originalDomainLinksThatAreRedirectable, originalDomainLinksThatAreNotRedirectable) = workingLinksToOriginalDomain.partition {
     link =>
       val original: URL = new URL(link)
       val targetHostLink: String = new URL(original.getProtocol, targetHost, original.getFile).toExternalForm
       httpClient.getStatusCode(targetHostLink) == 200
   }
 
-  def partitionLinksToMatch(host: String, links: ParSeq[String]): (ParSeq[String], ParSeq[String]) = {
+  def partitionLinksToMatch(host: String, links: List[String]): (List[String], List[String]) = {
     links.partition(new URL(_).getHost == host)
   }
 
 }
 
 
-class PageSpider(originalHost: String, targetHost: String, seedPath: String, recursionDepth: Int, proxy: Option[String]) {
+class PageSpider(originalHost: String,
+                 targetHost: String,
+                 seedPath: String,
+                 initRecursionDepth: Int,
+                 proxy: Option[String]) {
 
   val reportDir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
 
-  val httpChecker = new CachingHttpChecker(new JsoupHttpChecker(proxy))
+  val httpChecker = new CachingHttpChecker(new HtmlUnitHttpChecker(proxy))
 
   def audit(url: String, recursionDepth: Int) {
     if (recursionDepth > 0) {
+      println("\nDepth %d\n".format(initRecursionDepth - recursionDepth + 1))
+
       val allLinks = httpChecker.listAllLinks(url)
       val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, httpChecker)
 
@@ -67,7 +72,7 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
     }
   }
 
-  def report(reportFile: Path, links: ParSeq[String], linkCategory: String, categoryKey: Int) {
+  def report(reportFile: Path, links: List[String], linkCategory: String, categoryKey: Int) {
     val linkReport = if (links.isEmpty) "NONE"
     else links.map(link => "[%s] %s".format(categoryKey, link)).mkString("\n")
     val msg = "\n\n+++++ %s +++++\nCount of links found: %d\n\n%s\n\n".format(linkCategory, links.size, linkReport)
@@ -76,14 +81,12 @@ class PageSpider(originalHost: String, targetHost: String, seedPath: String, rec
   }
 
   println("Writing to " + reportDir)
-  audit("http://%s%s".format(targetHost, seedPath), recursionDepth)
+  audit("http://%s%s".format(targetHost, seedPath), initRecursionDepth)
 
 }
 
 
 object PageSpiderClient extends App {
-
-  ForkJoinTasks.defaultForkJoinPool.setParallelism(32)
 
   val oldHost = args(0)
   val newHost = args(1)
