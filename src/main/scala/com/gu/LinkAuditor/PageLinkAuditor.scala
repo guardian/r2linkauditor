@@ -29,7 +29,8 @@ class PageSpider(originalHost: String,
                  targetHost: String,
                  seedPath: String,
                  initRecursionDepth: Int,
-                 proxy: Option[String]) {
+                 proxy: Option[String],
+                 contentToFind: Option[String]) {
 
   val reportDir = "links-%s".format(DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm").print(new DateTime()))
 
@@ -42,9 +43,12 @@ class PageSpider(originalHost: String,
       val allLinks = httpChecker.listAllLinks(url)
       val auditor = new PageLinkAuditor(targetHost, originalHost, allLinks, httpChecker)
 
-      val refsToOriginalHost = {
+      val contentOccurrences: List[String] = {
         if (allLinks.isEmpty) Nil
-        else httpChecker.findContentInContext(url, originalHost)
+        else contentToFind.map(httpChecker.findContentInContext(url, _)) match {
+          case Some(occurrences) => occurrences
+          case None => Nil
+        }
       }
 
       val reportFile = {
@@ -60,10 +64,10 @@ class PageSpider(originalHost: String,
       report(reportFile, auditor.brokenLinksToOriginalDomain, "Broken links to old domain", 4)
       report(reportFile, auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain", 5)
       report(reportFile, auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain", 6)
-      if (!refsToOriginalHost.isEmpty) {
+      if (!contentOccurrences.isEmpty) {
         reportFile.append("\n+++++ References to '%s' found in body +++++\n".format(originalHost))
-        reportFile.append("Count of references found: %d\n\n".format(refsToOriginalHost.size))
-        refsToOriginalHost foreach {
+        reportFile.append("Count of references found: %d\n\n".format(contentOccurrences.size))
+        contentOccurrences foreach {
           ref => reportFile.append("[7] %s\n\n".format(ref))
         }
       }
@@ -88,12 +92,17 @@ class PageSpider(originalHost: String,
 
 object PageSpiderClient extends App {
 
+  def optionalArgs(i: Int): Option[String] = {
+    args.lift(i) map (arg => arg.stripPrefix("\"").stripSuffix("\"")) filterNot (_.isEmpty)
+  }
+
   val oldHost = args(0)
   val newHost = args(1)
   val seedPath = args(2)
   val recursionDepth = args(3).toInt
-  val proxy = args.lift(4)
+  val proxy = optionalArgs(4)
+  val contentToFind = optionalArgs(5)
 
-  val spider = new PageSpider(oldHost, newHost, seedPath, recursionDepth, proxy)
+  val spider = new PageSpider(oldHost, newHost, seedPath, recursionDepth, proxy, contentToFind)
 
 }

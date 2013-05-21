@@ -134,7 +134,7 @@ class HtmlUnitHttpChecker(val proxyHostAndPort: Option[String] = None) extends H
     val response = webClient.loadWebResponse(request)
     val statusCode = response.getStatusCode
 
-    val msg = "Thread %s fetched %s [%d]".format(Thread.currentThread.getName,url, statusCode) +
+    val msg = "Thread %s fetched %s [%d]".format(Thread.currentThread.getName, url, statusCode) +
       (Option(response.getResponseHeaderValue("X-GU-PageRenderer")) map
         (renderer => " rendered by %s".format(renderer))).getOrElse("")
     println(msg)
@@ -162,7 +162,9 @@ class HtmlUnitHttpChecker(val proxyHostAndPort: Option[String] = None) extends H
   override def findContentInContext(url: String, toFind: String): List[String] = {
     processPage(url) {
       page =>
-        val matchingElements = page.getByXPath("//*[contains(text(), '%s')]".format(toFind))
+        val matchingElements = page.getHtmlElementDescendants filter {
+          el => el.getChildElements.isEmpty && el.asXml.contains(toFind)
+        }
         matchingElements.map(_.asInstanceOf[DomElement].asXml).toList
     }
   }
