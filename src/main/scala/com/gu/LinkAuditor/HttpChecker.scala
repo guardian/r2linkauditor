@@ -144,11 +144,43 @@ class HtmlUnitHttpChecker(val proxyHostAndPort: Option[String] = None) extends H
 
   private def processPage(url: String)(process: (HtmlPage) => List[String]): List[String] = {
     val statusCode = getStatusCode(url)
-    if (statusCode == 200) process(webClient.getPage(url).asInstanceOf[HtmlPage])
-    else {
-      println("ERROR processing %s: [%d]".format(url, statusCode))
-      Nil
+
+    statusCode match {
+      case 200 => process(webClient.getPage(url).asInstanceOf[HtmlPage])
+      case 301 | 302 => processRedirect(url, process)
+      case _ => {
+        println("ERROR processing %s: [%d]".format(url, statusCode))
+        Nil
+      }
     }
+
+  }
+
+  private def processRedirect(url: String, process: (HtmlPage) => List[String], redirects: List[String] = Nil): List[String] = {
+    val request = new WebRequest(new URL(url), HttpMethod.HEAD)
+    val response = webClient.loadWebResponse(request)
+    val targetUrl = response.getResponseHeaderValue("Location")
+
+    println("Redirecting %s -> %s [redirection depth %d]".format(url, targetUrl, redirects.length + 1))
+
+    val statusCode = getStatusCode(targetUrl)
+
+    statusCode match {
+      case 200 => processPage(targetUrl)(process)
+      case 301 | 302 => {
+        if (redirects.length < 10) processRedirect(url, process, redirects :+ targetUrl)
+        else {
+          val redirectLoop = redirects.mkString(" -> ")
+          println("ERROR redirect loop: %s".format(redirectLoop))
+          Nil
+        }
+      }
+      case _ => {
+        println("ERROR processing %s: [%d]".format(url, statusCode))
+        Nil
+      }
+    }
+
   }
 
   override def listAllLinks(url: String): List[String] = {
