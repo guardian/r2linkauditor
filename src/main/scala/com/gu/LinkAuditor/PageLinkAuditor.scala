@@ -65,7 +65,7 @@ class PageSpider(originalHost: String,
       report(reportFile, auditor.originalDomainLinksThatAreRedirectable, "Links to old domain that can be rewritten to new domain", 5)
       report(reportFile, auditor.originalDomainLinksThatAreNotRedirectable, "Links to old domain that cannot be rewritten to new domain", 6)
       if (!contentOccurrences.isEmpty) {
-        reportFile.append("\n+++++ References to '%s' found in body +++++\n".format(originalHost))
+        reportFile.append("\n+++++ References to '%s' found in body +++++\n".format(contentToFind.get))
         reportFile.append("Count of references found: %d\n\n".format(contentOccurrences.size))
         contentOccurrences foreach {
           ref => reportFile.append("[7] %s\n\n".format(ref))
